@@ -109,7 +109,14 @@ export async function runScan(lat: number, lon: number): Promise<ScanReport> {
   const precipSeries = power.PRECTOTCORR;
 
   const dates = Object.keys(gwetProfSeries).sort();
-  const latestDate = dates[dates.length - 1];
+  const isValid = (v: number) => Number.isFinite(v) && v > -900;
+  const latestValidDate = [...dates]
+    .reverse()
+    .find(
+      (d) =>
+        isValid(gwetTopSeries[d]) && isValid(gwetRootSeries[d]) && isValid(gwetProfSeries[d])
+    );
+  const latestDate = latestValidDate ?? dates[dates.length - 1];
   const surfaceFrac = gwetTopSeries[latestDate];
   const rootFrac = gwetRootSeries[latestDate];
   const profFrac = gwetProfSeries[latestDate];
