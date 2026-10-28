@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runScan } from "@/lib/hydrology";
 
-export async function POST(req: NextRequest) {
-  let body: { lat?: unknown; lon?: unknown };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+function validateCoords(lat: number, lon: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lon >= -180 &&
+    lon <= 180
+  );
+}
 
-  const lat = Number(body.lat);
-  const lon = Number(body.lon);
-
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+async function scanAndRespond(lat: number, lon: number) {
+  if (!validateCoords(lat, lon)) {
     return NextResponse.json({ error: "Invalid coordinates" }, { status: 400 });
   }
-
   try {
     const report = await runScan(lat, lon);
     return NextResponse.json(report);
@@ -26,4 +26,21 @@ export async function POST(req: NextRequest) {
       { status: 502 }
     );
   }
+}
+
+export async function POST(req: NextRequest) {
+  let body: { lat?: unknown; lon?: unknown };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  return scanAndRespond(Number(body.lat), Number(body.lon));
+}
+
+/** Supports shareable/testable scan links: /api/scan?lat=..&lon=.. */
+export async function GET(req: NextRequest) {
+  const lat = Number(req.nextUrl.searchParams.get("lat"));
+  const lon = Number(req.nextUrl.searchParams.get("lon"));
+  return scanAndRespond(lat, lon);
 }
